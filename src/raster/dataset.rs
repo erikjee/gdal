@@ -1,7 +1,7 @@
-use libc::{c_int, c_double};
+use libc::{c_int, c_double, c_char};
 use std::ffi::{CString};
 use std::path::Path;
-use std::ptr::null_mut;
+use std::{ptr, ptr::null_mut};
 use utils::{_string, _last_cpl_err, _last_null_pointer_err};
 use raster::{Driver, RasterBand};
 use raster::driver::_register_drivers;
@@ -256,6 +256,54 @@ impl Dataset {
         buffer: &Buffer<T>
     ) -> Result<()> {
         self.rasterband(band_index)?.write(window, window_size, buffer)
+    }
+
+    /// Saves the dataset as a jpeg
+    pub fn save_as_png(&self, destination: String, bands: Vec<u8>) -> Result<bool> {
+        unsafe {
+            println!("destination {:?}", destination);
+            let dest_cstring = CString::new(destination).unwrap();
+            let dest_c = dest_cstring.as_ptr();
+            
+            // Select the output format. Starting with GDAL 2.3, if not specified, the format is guessed from the extension (previously was GTiff). Use the short format name.
+            let mut args = vec![String::from("-of"), String::from("JPEG")];
+            
+            // Rescale the input pixels values from the range src_min to src_max to the range dst_min to dst_max. If omitted the output range is 0 to 255. If omitted the input range is automatically computed from the source data. 
+            args.push("-scale".to_string());
+
+            // Override the color interpretation of all specified bands. For example -colorinterp red,green,blue,alpha for a 4 band output dataset.
+            args.push("-colorinterp".to_string());
+            args.push("red,green,blue".to_string());
+            
+            // Force the output image bands to have a specific data type supported by the driver, which may be one of the following: 
+            // Byte, UInt16, Int16, UInt32, Int32, Float32, Float64, CInt16, CInt32, CFloat32 or CFloat64
+            args.push("-ot".to_string());
+            args.push("Byte".to_string());
+            
+            // Select an input band band for output. Bands are numbered from 1. Multiple -b switches may be used to select a set of input bands to write to the output file, or to reorder bands. band can also be set to “mask,1” (or just “mask”) to mean the mask band of the first band of the input dataset.
+            for band in bands {
+                args.push("-b".to_string());
+                args.push(band.to_string());
+            }
+
+            let mut args_cstring = args
+                .iter()
+                .map(|x| CString::new(x.clone()).unwrap().into_raw())
+                .collect::<Vec<*mut c_char>>();
+            args_cstring.push(ptr::null::<i8>() as *mut i8);
+
+            let args_c = args_cstring.as_mut_ptr();
+            let options = gdal_sys::GDALTranslateOptionsNew(
+                args_c,
+                ptr::null::<gdal_sys::GDALTranslateOptionsForBinary>()
+                    as *mut gdal_sys::GDALTranslateOptionsForBinary,
+            );
+            let mut usage_error = 0;
+            println!("dest_cstring {:?}", dest_cstring);
+            gdal_sys::GDALTranslate(dest_c, self.c_dataset, options, &mut usage_error);
+            gdal_sys::GDALTranslateOptionsFree(options);
+        }
+        Ok(true)
     }
 
 }
