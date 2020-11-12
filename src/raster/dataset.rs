@@ -266,14 +266,14 @@ impl Dataset {
             let dest_c = dest_cstring.as_ptr();
             
             // Select the output format. Starting with GDAL 2.3, if not specified, the format is guessed from the extension (previously was GTiff). Use the short format name.
-            let mut args = vec![String::from("-of"), String::from("JPEG")];
+            let mut args = vec![String::from("-of"), String::from("PNG")];
             
             // Rescale the input pixels values from the range src_min to src_max to the range dst_min to dst_max. If omitted the output range is 0 to 255. If omitted the input range is automatically computed from the source data. 
             args.push("-scale".to_string());
 
             // Override the color interpretation of all specified bands. For example -colorinterp red,green,blue,alpha for a 4 band output dataset.
-            args.push("-colorinterp".to_string());
-            args.push("red,green,blue".to_string());
+            // args.push("-colorinterp".to_string());
+            // args.push("red,green,blue".to_string());
             
             // Force the output image bands to have a specific data type supported by the driver, which may be one of the following: 
             // Byte, UInt16, Int16, UInt32, Int32, Float32, Float64, CInt16, CInt32, CFloat32 or CFloat64
